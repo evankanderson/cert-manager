@@ -56,6 +56,7 @@ type dnsProviderConstructors struct {
 	route53    func(accessKey, secretKey, hostedZoneID, region string, ambient bool, dns01Nameservers []string) (*route53.DNSProvider, error)
 	azureDNS   func(clientID, clientSecret, subscriptionID, tenentID, resourceGroupName, hostedZoneName string, dns01Nameservers []string) (*azuredns.DNSProvider, error)
 	acmeDNS    func(host string, accountJson []byte, dns01Nameservers []string) (*acmedns.DNSProvider, error)
+	dynuDNS    func(clientId, clientSecret string, dns01Nameservers []string) (*dynudns.DNSProvider, error)
 }
 
 // Solver is a solver for the acme dns01 challenge.
@@ -273,6 +274,30 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating acmedns challenge solver: %s", err)
 		}
+	case providerConfig.DynuDNS != nil:
+		clientIdSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientID.Name)
+		if err != nil {
+			return nil, fmt.Errorf("error getting dynudns client id: %s", err)
+		}
+		clientIdBytes, ok := clientIdSecret.Data[providerConfig.DynuDNS.ClientID.Key]
+		if !ok {
+			return nil, fmt.Errorf("error getting dynudns client id: key '%s' not found in secret", providerConfig.DynuDNS.ClientID.Key)
+		}
+
+		clientSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientSecret.Name)
+		if err != nil {
+			return nil, fmt.Errorf("error getting dynudns oauth secret: %s", err)
+		}
+		clientSecretBytes, ok := clientSecret.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientSecret.Key)
+		if !ok {
+			return nil, fmt.Errorf("error getting dynudns oauth secret: key '%s' is not found in secret", providerConfig.DynuDNS.ClientSecret.Key)
+		}
+		impl, err := s.dnsProviderConstructors.dynuDNS(
+			clientIdBytes, clientSecretBytes, s.DNS01Nameservers)
+		if err != nil {
+			return nil, fmt.Errorf("error instantiating dynudns challenge solver: %s", err)
+		}
+
 	default:
 		return nil, fmt.Errorf("no dns provider config specified for provider %q", providerName)
 	}

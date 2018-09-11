@@ -150,6 +150,7 @@ type ACMEIssuerDNS01Provider struct {
 	Route53    *ACMEIssuerDNS01ProviderRoute53    `json:"route53,omitempty"`
 	AzureDNS   *ACMEIssuerDNS01ProviderAzureDNS   `json:"azuredns,omitempty"`
 	AcmeDNS    *ACMEIssuerDNS01ProviderAcmeDNS    `json:"acmedns,omitempty"`
+	DynuDNS    *ACMEIssuerDNS01ProviderDynuDNS    `json:"dynudns,omitempty"`
 }
 
 // ACMEIssuerDNS01ProviderAkamai is a structure containing the DNS
@@ -202,6 +203,13 @@ type ACMEIssuerDNS01ProviderAzureDNS struct {
 type ACMEIssuerDNS01ProviderAcmeDNS struct {
 	Host          string            `json:"host"`
 	AccountSecret SecretKeySelector `json:"accountSecretRef"`
+}
+
+// ACMEIssuerDNS01ProviderDynuDNS is a structure containing the DNS
+// configuration for DynuDNS API
+type ACMEIssuerDNS01ProviderDynuDNS struct {
+	ClientId     SecretKeySelector `json:"clientIdRef"`
+	ClientSecret SecretKeySelector `json:"clientSecretRef"`
 }
 
 // IssuerStatus contains status information about an Issuer
