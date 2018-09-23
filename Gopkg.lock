@@ -106,7 +106,7 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
-  digest = "1:e76e419300650c13007729899844e94c598acd1c03ccc4433dc4c6c6c2f7c816"
+  digest = "1:88aa5458e35d57785fbf1a8d2dbf6a8554b90220bb351ade5a1215e1bcd56fca"
   name = "github.com/coreos/etcd"
   packages = [
     "auth/authpb",
@@ -385,7 +385,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e7653bfeb06ebed755a451d829d507832f1cda20b31c1becaacd042d89880a43"
+  digest = "1:67a10482b550d65dea0f9e08076df23453aea1df81380a32a4326e9e650e7dce"
   name = "github.com/hashicorp/go-rootcerts"
   packages = ["."]
   pruneopts = "NU"
@@ -469,7 +469,7 @@
   version = "0.2.2"
 
 [[projects]]
-  digest = "1:f7587b60ccf679a4b22ae7aa1f315ec16309bf47e28f69f10abf07a70b7293ce"
+  digest = "1:fccb6cb4646d762556e723cd91d627a2ce0648ad78f51a112f5bb0138e856e18"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = "U"
@@ -634,7 +634,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6a3c8a97a908f2d9ab2ae321f34093b6fb518997d825d96e166c5181f1e628a1"
+  digest = "1:9ddf2e40d5e15b12c0fba1ab42b714885e3825733c31b082704d7198503dda46"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -728,18 +728,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3dec6818ccda9d0ccd036e7e5f1f69f4544700b091624565369495f0252c2003"
+  digest = "1:88acc9a93093041235ce3ea6d18dc745bfb32c157da9d720a44cd22e537064e9"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
-    "clientcredentials",
     "google",
     "internal",
     "jws",
     "jwt",
   ]
   pruneopts = "U"
-  revision = "d2e6202438beef2727060aa7cabdd924d92ebfd9"
+  revision = "b53b38ad8a6435bd399ea76d0fa74f23149cca4e"
 
 [[projects]]
   branch = "master"
@@ -1375,7 +1374,6 @@
     "golang.org/x/crypto/acme",
     "golang.org/x/net/context",
     "golang.org/x/oauth2",
-    "golang.org/x/oauth2/clientcredentials",
     "golang.org/x/oauth2/google",
     "google.golang.org/api/dns/v1",
     "k8s.io/api/admission/v1beta1",
