@@ -34,6 +34,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/clouddns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/cloudflare"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/dynudns"
+	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/rfc2136"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/route53"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
 )
@@ -57,6 +58,7 @@ type dnsProviderConstructors struct {
 	route53    func(accessKey, secretKey, hostedZoneID, region string, ambient bool, dns01Nameservers []string) (*route53.DNSProvider, error)
 	azureDNS   func(clientID, clientSecret, subscriptionID, tenentID, resourceGroupName, hostedZoneName string, dns01Nameservers []string) (*azuredns.DNSProvider, error)
 	acmeDNS    func(host string, accountJson []byte, dns01Nameservers []string) (*acmedns.DNSProvider, error)
+	rfc2136    func(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string, dns01Nameservers []string) (*rfc2136.DNSProvider, error)
 	dynuDNS    func(clientId, clientSecret string, dns01Nameservers []string) (*dynudns.DNSProvider, error)
 }
 
@@ -69,6 +71,7 @@ type Solver struct {
 	dnsProviderConstructors dnsProviderConstructors
 }
 
+// Present performs the work to configure DNS to resolve a DNS01 challenge.
 func (s *Solver) Present(ctx context.Context, issuer v1alpha1.GenericIssuer, _ *v1alpha1.Certificate, ch v1alpha1.ACMEOrderChallenge) error {
 	if ch.SolverConfig.DNS01 == nil {
 		return fmt.Errorf("challenge dns config must be specified")
@@ -88,6 +91,7 @@ func (s *Solver) Present(ctx context.Context, issuer v1alpha1.GenericIssuer, _ *
 	return slv.Present(ch.Domain, ch.Token, ch.Key)
 }
 
+// Check verifies that the DNS records for the ACME challenge have propagated.
 func (s *Solver) Check(ch v1alpha1.ACMEOrderChallenge) (bool, error) {
 	fqdn, value, ttl, err := util.DNS01Record(ch.Domain, ch.Key, s.DNS01Nameservers)
 	if err != nil {
@@ -112,6 +116,8 @@ func (s *Solver) Check(ch v1alpha1.ACMEOrderChallenge) (bool, error) {
 	return true, nil
 }
 
+// CleanUp removes DNS records which are no longer needed after
+// certificate issuance.
 func (s *Solver) CleanUp(ctx context.Context, issuer v1alpha1.GenericIssuer, _ *v1alpha1.Certificate, ch v1alpha1.ACMEOrderChallenge) error {
 	if ch.SolverConfig.DNS01 == nil {
 		return fmt.Errorf("challenge dns config must be specified")
@@ -256,6 +262,9 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 			providerConfig.AzureDNS.HostedZoneName,
 			s.DNS01Nameservers,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("error instantiating azuredns challenge solver: %s", err)
+		}
 	case providerConfig.AcmeDNS != nil:
 		accountSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.AcmeDNS.AccountSecret.Name)
 		if err != nil {
@@ -275,6 +284,31 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating acmedns challenge solver: %s", err)
 		}
+	case providerConfig.RFC2136 != nil:
+		var secret string
+		if len(providerConfig.RFC2136.TSIGSecret.Name) > 0 {
+			tsigSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.RFC2136.TSIGSecret.Name)
+			if err != nil {
+				return nil, fmt.Errorf("error getting rfc2136 service account: %s", err.Error())
+			}
+			secretBytes, ok := tsigSecret.Data[providerConfig.RFC2136.TSIGSecret.Key]
+			if !ok {
+				return nil, fmt.Errorf("error getting rfc2136 secret key: key '%s' not found in secret", providerConfig.RFC2136.TSIGSecret.Key)
+			}
+			secret = string(secretBytes)
+		}
+
+		impl, err = s.dnsProviderConstructors.rfc2136(
+			providerConfig.RFC2136.Nameserver,
+			string(providerConfig.RFC2136.TSIGAlgorithm),
+			providerConfig.RFC2136.TSIGKeyName,
+			secret,
+			s.DNS01Nameservers,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error instantiating rfc2136 challenge solver: %s", err.Error())
+		}
+
 	case providerConfig.DynuDNS != nil:
 		clientIdSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientId.Name)
 		if err != nil {
@@ -298,7 +332,6 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating dynudns challenge solver: %s", err)
 		}
-
 	default:
 		return nil, fmt.Errorf("no dns provider config specified for provider %q", providerName)
 	}
@@ -306,6 +339,8 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 	return impl, nil
 }
 
+// NewSolver creates a Solver which can instantiate the appropriate DNS
+// provider.
 func NewSolver(ctx *controller.Context) *Solver {
 	return &Solver{
 		ctx,
@@ -316,6 +351,7 @@ func NewSolver(ctx *controller.Context) *Solver {
 			route53.NewDNSProvider,
 			azuredns.NewDNSProviderCredentials,
 			acmedns.NewDNSProviderHostBytes,
+			rfc2136.NewDNSProviderCredentials,
 			dynudns.NewDNSProvider,
 		},
 	}
