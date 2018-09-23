@@ -33,6 +33,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/azuredns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/clouddns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/cloudflare"
+	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/dynudns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/route53"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
 )
@@ -275,13 +276,13 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 			return nil, fmt.Errorf("error instantiating acmedns challenge solver: %s", err)
 		}
 	case providerConfig.DynuDNS != nil:
-		clientIdSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientID.Name)
+		clientIdSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientId.Name)
 		if err != nil {
 			return nil, fmt.Errorf("error getting dynudns client id: %s", err)
 		}
-		clientIdBytes, ok := clientIdSecret.Data[providerConfig.DynuDNS.ClientID.Key]
+		clientIdBytes, ok := clientIdSecret.Data[providerConfig.DynuDNS.ClientId.Key]
 		if !ok {
-			return nil, fmt.Errorf("error getting dynudns client id: key '%s' not found in secret", providerConfig.DynuDNS.ClientID.Key)
+			return nil, fmt.Errorf("error getting dynudns client id: key '%s' not found in secret", providerConfig.DynuDNS.ClientId.Key)
 		}
 
 		clientSecret, err := s.secretLister.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientSecret.Name)
@@ -315,6 +316,7 @@ func NewSolver(ctx *controller.Context) *Solver {
 			route53.NewDNSProvider,
 			azuredns.NewDNSProviderCredentials,
 			acmedns.NewDNSProviderHostBytes,
+			dynudns.NewDNSProvider,
 		},
 	}
 }
