@@ -323,12 +323,12 @@ func (s *Solver) solverForIssuerProvider(issuer v1alpha1.GenericIssuer, provider
 		if err != nil {
 			return nil, fmt.Errorf("error getting dynudns oauth secret: %s", err)
 		}
-		clientSecretBytes, ok := clientSecret.Secrets(resourceNamespace).Get(providerConfig.DynuDNS.ClientSecret.Key)
+		clientSecretBytes, ok := clientSecret.Data[providerConfig.DynuDNS.ClientSecret.Key]
 		if !ok {
 			return nil, fmt.Errorf("error getting dynudns oauth secret: key '%s' is not found in secret", providerConfig.DynuDNS.ClientSecret.Key)
 		}
-		impl, err := s.dnsProviderConstructors.dynuDNS(
-			clientIdBytes, clientSecretBytes, s.DNS01Nameservers)
+		impl, err = s.dnsProviderConstructors.dynuDNS(
+			string(clientIdBytes), string(clientSecretBytes), s.DNS01Nameservers)
 		if err != nil {
 			return nil, fmt.Errorf("error instantiating dynudns challenge solver: %s", err)
 		}
