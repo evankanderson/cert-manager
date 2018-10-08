@@ -728,10 +728,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:88acc9a93093041235ce3ea6d18dc745bfb32c157da9d720a44cd22e537064e9"
+  digest = "1:424136cd989754c9bc0957e8225e558217e70fda2cc87e3922864fd0228e72ec"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "clientcredentials",
     "google",
     "internal",
     "jws",
@@ -1374,6 +1375,7 @@
     "golang.org/x/crypto/acme",
     "golang.org/x/net/context",
     "golang.org/x/oauth2",
+    "golang.org/x/oauth2/clientcredentials",
     "golang.org/x/oauth2/google",
     "google.golang.org/api/dns/v1",
     "k8s.io/api/admission/v1beta1",
