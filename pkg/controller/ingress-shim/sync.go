@@ -33,11 +33,6 @@ import (
 )
 
 const (
-	// tlsACMEAnnotation is here for compatibility with kube-lego style
-	// ingress resources. When set to "true", a Certificate resource with
-	// the default configuration provided to ingress-annotation should be
-	// created.
-	tlsACMEAnnotation = "kubernetes.io/tls-acme"
 	// editInPlaceAnnotation is used to toggle the use of ingressClass instead
 	// of ingress on the created Certificate resource
 	editInPlaceAnnotation = "certmanager.k8s.io/acme-http01-edit-in-place"
@@ -54,6 +49,9 @@ const (
 	// acmeIssuerDNS01ProviderNameAnnotation can be used to override the default dns01 provider
 	// configured on the issuer if the challenge type is set to dns01
 	acmeIssuerDNS01ProviderNameAnnotation = "certmanager.k8s.io/acme-dns01-provider"
+	// acmeIssuerHTTP01IngressClassAnnotation can be used to override the http01 ingressClass
+	// if the challenge type is set to http01
+	acmeIssuerHTTP01IngressClassAnnotation = "certmanager.k8s.io/acme-http01-ingress-class"
 
 	ingressClassAnnotation = class.IngressKey
 )
@@ -61,7 +59,7 @@ const (
 var ingressGVK = extv1beta1.SchemeGroupVersion.WithKind("Ingress")
 
 func (c *Controller) Sync(ctx context.Context, ing *extv1beta1.Ingress) error {
-	if !shouldSync(ing) {
+	if !shouldSync(ing, c.defaults.autoCertificateAnnotations) {
 		glog.Infof("Not syncing ingress %s/%s as it does not contain necessary annotations", ing.Namespace, ing.Name)
 		return nil
 	}
@@ -229,9 +227,14 @@ func (c *Controller) setIssuerSpecificConfig(crt *v1alpha1.Certificate, issuer v
 			if ok && editInPlace == "true" {
 				domainCfg.HTTP01.Ingress = ing.Name
 			} else {
-				ingressClass, ok := ingAnnotations[ingressClassAnnotation]
+				ingressClass, ok := ingAnnotations[acmeIssuerHTTP01IngressClassAnnotation]
 				if ok {
 					domainCfg.HTTP01.IngressClass = &ingressClass
+				} else {
+					ingressClass, ok := ingAnnotations[ingressClassAnnotation]
+					if ok {
+						domainCfg.HTTP01.IngressClass = &ingressClass
+					}
 				}
 			}
 		case "dns01":
@@ -253,7 +256,7 @@ func (c *Controller) setIssuerSpecificConfig(crt *v1alpha1.Certificate, issuer v
 
 // shouldSync returns true if this ingress should have a Certificate resource
 // created for it
-func shouldSync(ing *extv1beta1.Ingress) bool {
+func shouldSync(ing *extv1beta1.Ingress, autoCertificateAnnotations []string) bool {
 	annotations := ing.Annotations
 	if annotations == nil {
 		annotations = map[string]string{}
@@ -264,9 +267,11 @@ func shouldSync(ing *extv1beta1.Ingress) bool {
 	if _, ok := annotations[clusterIssuerNameAnnotation]; ok {
 		return true
 	}
-	if s, ok := annotations[tlsACMEAnnotation]; ok {
-		if b, _ := strconv.ParseBool(s); b {
-			return true
+	for _, x := range autoCertificateAnnotations {
+		if s, ok := annotations[x]; ok {
+			if b, _ := strconv.ParseBool(s); b {
+				return true
+			}
 		}
 	}
 	if _, ok := annotations[acmeIssuerChallengeTypeAnnotation]; ok {
